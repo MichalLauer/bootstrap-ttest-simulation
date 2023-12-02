@@ -1,4 +1,6 @@
 server <- function(input, output, session) {
+
+  ### Ovládání
   # Změny ovládání vlivem spojitosti
   observe({
     if (input$continuous) {
@@ -6,13 +8,13 @@ server <- function(input, output, session) {
       # Vždy zapnout normalitu
       if (input$normality) {
         enable("mu")
-        enable("sigma2")
+        enable("sigma")
       }
     } else {
       disable("normality")
       # Vždy vypnout normalitu
       disable("mu")
-      disable("sigma2")
+      disable("sigma")
     }
   }) |>
     bindEvent(input$continuous, ignoreInit = TRUE)
@@ -31,10 +33,10 @@ server <- function(input, output, session) {
   observe({
     if (input$normality) {
       enable("mu")
-      enable("sigma2")
+      enable("sigma")
     } else {
       disable("mu")
-      disable("sigma2")
+      disable("sigma")
     }
   }) |>
     bindEvent(input$normality, ignoreInit = TRUE)
@@ -58,23 +60,85 @@ server <- function(input, output, session) {
     }
   }) |>
     bindEvent(input$outliers, ignoreInit = TRUE)
+  # ----------------------------------------------------------------------------
 
-  # Generování dat
-  population <-
-    reactive({
-      # TODO...
+  sample <- reactive({
+    # TODO: ...
 
-      rnorm(n = input$n, mean = input$mean, sd = input$sigma)
-    }) |>
+    rnorm(input$n, input$mu, input$sigma)
+  }) |>
     bindEvent(input$generate)
 
-  output$out <- renderPlot({
-    hist(population())
+  ### Panel 1 - Náhodný výběr
+  output$sam_hs <- renderPlot({
+    hist(sample(),
+         main = "Histogram náhodného výběru",
+         xlab = "Náhodný výběr", ylab = "Četnost")
   })
 
-  output$shapirowilk <- renderText({
-    t <- shapiro.test(population())
+  output$sam_sw <- renderText({
+    result <- capture.output(shapiro.test(sample()))
 
-    t
+    paste(result[-1], collapse = "\n")
   })
+
+  output$sam_char <- renderText({
+    data <- sample()
+    x <-
+      c("Průměr:" = mean(data),
+        "Rozptyl:" = var(data),
+        "Šikmost:" = skewness(data),
+        "Koeficient špičatosti:" = kurtosis(data)
+      )
+
+    paste(names(x), x, sep = " ", collapse = "\n")
+  })
+
+  output$sam_tt <- renderText({
+    tt <- t.test(x = sample(),
+                 mu = input$mu)
+    x <-
+      c("p-hodnota:" = tt$p.value,
+        "95% CI:" = paste0("(", paste0(tt$conf.int, collapse = ", "), ")"),
+        "Výsledek:" = ifelse(tt$p.value < 0.05, "Zamítáme H0", "Nemůžeme zamítnout H0")
+      )
+
+    paste(names(x), x, sep = " ", collapse = "\n")
+  })
+  # ----------------------------------------------------------------------------
+
+  bootstrap <- reactive({
+    boot(data = sample(),
+         statistic = function(data, i) mean(data[i]),
+         R = input$n_boot)
+  }) |>
+    bindEvent(sample())
+
+  ### Panel 2 - Bootstrap
+  output$boot_hs <- renderPlot({
+    # boot <-
+    hist(bootstrap()$t,
+         main = "Histogram bootstrapovaných průměrů",
+         xlab = "Průměry", ylab = "Četnost")
+  })
+
+  output$boot_sw <- renderText({
+    result <- capture.output(shapiro.test(bootstrap()$t))
+
+    paste(result[-1], collapse = "\n")
+  })
+
+  output$boot_char <- renderText({
+    data <- bootstrap()$t
+    x <-
+      c("Průměr:" = mean(data),
+        "Rozptyl:" = var(data),
+        "Šikmost:" = skewness(data),
+        "Koeficient špičatosti:" = kurtosis(data)
+      )
+
+    paste(names(x), x, sep = " ", collapse = "\n")
+  })
+  # ----------------------------------------------------------------------------
+
 }

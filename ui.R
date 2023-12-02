@@ -7,11 +7,13 @@ ui <- page_sidebar(
     bs_add_rules(sass::sass_file("www/style.scss")),
   sidebar = sidebar(
     open = "always",
-    width = "20vw",
     # Velikost výběry
     numericInput(inputId = "n",
-                 label = "Velikost výběru",
+                 label = "Výběr (n)",
                  value = 30, min = 1, max = 1000),
+    numericInput(inputId = "n_boot",
+                 label = "Bootstrap (R)",
+                 value = 100, min = 1, max = 1000),
     hr(),
     # Spojitost
     checkboxInput(inputId = "continuous",
@@ -30,22 +32,26 @@ ui <- page_sidebar(
     checkboxInput(inputId = "normality",
                   label = "Je splněna normalita?",
                   value = TRUE),
-    numericInput(inputId = "mean",
-                 label = "Střední hodnota",
-                 value = 0, min = -Inf, max = Inf),
-    numericInput(inputId = "sigma",
-                 label = "Směrodatná odchylka",
-                 value = 1, min = 1e-16, max = Inf),
+    fluidRow(
+      column(width = 6,
+             numericInput(inputId = "mu",
+                          label = "μ",
+                          value = 0, min = -Inf, max = Inf)),
+      column(width = 6,
+             numericInput(inputId = "sigma",
+                          label = "σ",
+                          value = 1, min = 1e-16, max = Inf))
+    ),
     hr(),
     # Odlehlé hodnoty
     checkboxInput(inputId = "outliers",
-                  label = "Jsou v datech odlehlé hodnoty?",
+                  label = "Existují odlehlé hodnoty?",
                   value = FALSE),
     disabled(numericInput(inputId = "outliers_n",
-                          label = "Kolik generovat odlehlých hodnot?",
+                          label = "Kolik jich je?",
                           value = 1, min = 1, max = 30)),
     disabled(numericInput(inputId = "outliers_sigma",
-                          label = "Jaký je maximální limit (kolik sigma)?",
+                          label = "Kolik max. sigma?",
                           value = 1, min = 1e-16, max = Inf)),
     hr(),
     actionBttn(
@@ -57,12 +63,42 @@ ui <- page_sidebar(
   ),
   shinyjs::useShinyjs(),
   tabsetPanel(
+    # Náhodný výběr
     tabPanel(
-      title = "Generovaná data",
-      plotOutput("out"),
+      title = "Náhodný výběr",
+      fluidRow(
+        column(width = 12,
+               plotOutput("sam_hs")
+        )
+      ),
       fluidRow(
         column(width = 6,
-               verbatimTextOutput("shapirowilk")
+               verbatimTextOutput("sam_sw")
+        ),
+        column(width = 6,
+               verbatimTextOutput("sam_char")
+        )
+      ),
+      fluidRow(
+        column(width = 6,
+               verbatimTextOutput("sam_tt")
+        )
+      )
+    ),
+    # Bootstrapování
+    tabPanel(
+      title = "Bootstrap",
+      fluidRow(
+        column(width = 12,
+               plotOutput("boot_hs")
+        )
+      ),
+      fluidRow(
+        column(width = 6,
+               verbatimTextOutput("boot_sw")
+        ),
+        column(width = 6,
+               verbatimTextOutput("boot_char")
         )
       )
     )
