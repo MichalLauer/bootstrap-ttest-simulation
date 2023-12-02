@@ -5,14 +5,12 @@ server <- function(input, output, session) {
       enable("normality")
       # Vždy zapnout normalitu
       if (input$normality) {
-        enable("mu")
-        enable("sigma2")
+        enable("sigma")
       }
     } else {
       disable("normality")
       # Vždy vypnout normalitu
-      disable("mu")
-      disable("sigma2")
+      disable("sigma")
     }
   }) |>
     bindEvent(input$continuous, ignoreInit = TRUE)
@@ -62,7 +60,13 @@ server <- function(input, output, session) {
   # Generování dat
   population <-
     reactive({
-      # TODO...
+      if (input$continuous) {
+        data <- rnorm(n = input$n, mean = input$mu, sd = input$sigma2)
+      } else {
+        data <- rpois(n = input$n, lambda = input$mean)
+      }
+
+
 
       rnorm(n = input$n, mean = input$mean, sd = input$sigma)
     }) |>
