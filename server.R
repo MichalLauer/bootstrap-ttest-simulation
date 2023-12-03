@@ -106,7 +106,9 @@ server <- function(input, output, session) {
 
   output$sam_tt_sim <- renderText({
     R <- 1000
-    pvals <- numeric(R)
+    pvals1 <- numeric(R)
+    pvals2 <- numeric(R)
+    mu2 <- input$mu + 1
     for (i in seq_len(R)) {
       data <- generate_data(continuous = input$continuous,
                             normality = input$normality,
@@ -117,13 +119,17 @@ server <- function(input, output, session) {
                             sigma = input$sigma,
                             correlation = input$correlation,
                             outliers_n = input$outliers_n)
-      pvals[i] <- t.test(x = data, mu = input$mu)$p.value
+      pvals1[i] <- t.test(x = data, mu = input$mu)$p.value
+      pvals2[i] <- t.test(x = data, mu = mu2)$p.value
     }
 
     x <-
       c("Počet simulací:" = R,
-        "Chyba I. druhu:" = mean(pvals < 0.05)
+        "Chyba I. druhu:" = mean(pvals1 <= 0.05),
+        mean(pvals2 >= 0.05),
+        "Síla testu:" = 1 - mean(pvals2 >= 0.05)
       )
+    names(x)[3] <- paste0("Chyba II. druhu (μ = ", mu2, ")")
 
     paste(names(x), x, sep = " ", collapse = "\n")
   }) |>
@@ -155,9 +161,7 @@ server <- function(input, output, session) {
     data <- bootstrap()$t
     x <-
       c("Průměr:" = mean(data),
-        "Rozptyl:" = var(data),
-        "Šikmost:" = skewness(data),
-        "Koeficient špičatosti:" = kurtosis(data)
+        "Rozptyl:" = var(data)
       )
 
     paste(names(x), x, sep = " ", collapse = "\n")

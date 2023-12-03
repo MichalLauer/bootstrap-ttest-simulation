@@ -7,7 +7,7 @@ library(shinyjs)
 library(boot)
 # Funkce
 generate_data <- function(continuous, normality, dependent, outliers,
-                          n, mu, sigma, correlation, outliers_n) {
+                          n, mu, sigma = mu, correlation, outliers_n) {
   if (continuous) {
     # Spojitá data
     if (normality) {
@@ -23,9 +23,9 @@ generate_data <- function(continuous, normality, dependent, outliers,
   }
   # Přidání závislosti
   if (dependent) {
-    for (i in seq(from = 1, to = length(data) - 1)) {
-      data[i] <- data[i] + correlation * data[i + 1]
-    }
+    phi <- correlation  # Correlation coefficient
+    sigma <- sqrt((1 - phi^2) * sigma^2)
+    data <- arima.sim(model = list(ar = phi), n = n, sd = sigma)
   }
   # Přidání odlehlých hodnot
   if (outliers) {
