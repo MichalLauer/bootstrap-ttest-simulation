@@ -20,15 +20,6 @@ ui <- page_sidebar(
                   label = "Jsou data spojitá?",
                   value = TRUE),
     hr(),
-    # Nezávislost
-    checkboxInput(inputId = "dependent",
-                  label = "Jsou data závislá?",
-                  value = FALSE),
-    disabled(numericInput(inputId = "correlation",
-                          label = "Síla korelace",
-                          step = 0.1,
-                          value = 0.3, min = -1, max = 1)),
-    hr(),
     # Normalita
     checkboxInput(inputId = "normality",
                   label = "Je splněna normalita?",

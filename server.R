@@ -14,16 +14,6 @@ server <- function(input, output, session) {
   }) |>
     bindEvent(input$continuous, ignoreInit = TRUE)
 
-  # Změna ovládání vlivem nezávislosti
-  observe({
-    if (input$dependent) {
-      enable("correlation")
-    } else {
-      disable("correlation")
-    }
-  }) |>
-    bindEvent(input$dependent, ignoreInit = TRUE)
-
   # Změny ovládání vlivem velikosti vzorku
   observe({
     updateNumericInput(inputId = "outliers_n",
@@ -51,12 +41,10 @@ server <- function(input, output, session) {
     reactive({
       generate_data(continuous = input$continuous,
                     normality = input$normality,
-                    dependent = input$dependent,
                     outliers = input$outliers,
                     n = input$n,
                     mu = input$mu,
                     sigma = input$sigma,
-                    correlation = input$correlation,
                     outliers_n = input$outliers_n)
     }) |>
     bindEvent(input$generate)
@@ -82,8 +70,8 @@ server <- function(input, output, session) {
     data <- sample()
     x <-
       c("Průměr:" = mean(data),
+        "Směrodatná odchylka:" = sd(data),
         "Rozptyl:" = var(data),
-        "Ljung-Box test p-val:" = Box.test(data, type = "Ljung-Box")$p.value,
         "Počet odlehlých hodnot:" = sum(data < quantile(data, probs = 0.25) - 1.5*IQR(data) |
                                           data > quantile(data, probs = 0.75) + 1.5*IQR(data))
       )
@@ -105,19 +93,17 @@ server <- function(input, output, session) {
     bindEvent(input$generate)
 
   output$sam_tt_sim <- renderText({
-    R <- 1000
+    R <- 2
     pvals1 <- numeric(R)
     pvals2 <- numeric(R)
     mu2 <- input$mu + 1
     for (i in seq_len(R)) {
       data <- generate_data(continuous = input$continuous,
                             normality = input$normality,
-                            dependent = input$dependent,
                             outliers = input$outliers,
                             n = input$n,
                             mu = input$mu,
                             sigma = input$sigma,
-                            correlation = input$correlation,
                             outliers_n = input$outliers_n)
       pvals1[i] <- t.test(x = data, mu = input$mu)$p.value
       pvals2[i] <- t.test(x = data, mu = mu2)$p.value

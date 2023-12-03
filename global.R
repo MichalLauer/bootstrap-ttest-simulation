@@ -5,14 +5,15 @@ library(bslib)
 library(shinyjs)
 # Výpočty
 library(boot)
+library(distr6)
 # Funkce
-generate_data <- function(continuous, normality, dependent, outliers,
-                          n, mu, sigma = mu, correlation, outliers_n) {
+generate_data <- function(continuous, normality, outliers,
+                          n, mu, sigma = mu, outliers_n) {
   if (continuous) {
     # Spojitá data
     if (normality) {
       # Spojitá data - normální
-      data <- rnorm(n = n, mean = mu, sd = sigma)
+      data <- rnorm(n, mean = mu, sd = sigma)
     } else {
       # Spojití data - lognormální
       data <- rlnorm(n = n, meanlog = log(mu), sdlog = log(sigma))
@@ -21,12 +22,7 @@ generate_data <- function(continuous, normality, dependent, outliers,
     # Nespojití data - Poissonovo
     data <- rpois(n = n, lambda = mu)
   }
-  # Přidání závislosti
-  if (dependent) {
-    phi <- correlation  # Correlation coefficient
-    sigma <- sqrt((1 - phi^2) * sigma^2)
-    data <- arima.sim(model = list(ar = phi), n = n, sd = sigma)
-  }
+
   # Přidání odlehlých hodnot
   if (outliers) {
     indexes <- sample.int(length(data), size = outliers_n)
