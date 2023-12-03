@@ -26,10 +26,7 @@ generate_data <- function(continuous, normality, outliers,
   # Přidání odlehlých hodnot
   if (outliers) {
     indexes <- sample.int(length(data), size = outliers_n)
-    for (index in indexes) {
-      direction <- ifelse(data[index] < mean(data), -1, 1)
-      data[index] <- data[index] + 3 * IQR(data) * direction
-    }
+    data[indexes] <- data[indexes] + 3 * IQR(data)
   }
 
   data

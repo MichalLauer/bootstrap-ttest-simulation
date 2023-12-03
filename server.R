@@ -66,34 +66,15 @@ server <- function(input, output, session) {
     paste(result[-1], collapse = "\n")
   })
 
-  output$sam_char <- renderText({
-    data <- sample()
-    x <-
-      c("Průměr:" = mean(data),
-        "Směrodatná odchylka:" = sd(data),
-        "Rozptyl:" = var(data),
-        "Počet odlehlých hodnot:" = sum(data < quantile(data, probs = 0.25) - 1.5*IQR(data) |
-                                          data > quantile(data, probs = 0.75) + 1.5*IQR(data))
-      )
-
-    paste(names(x), x, sep = " ", collapse = "\n")
-  })
-
   output$sam_tt <- renderText({
-    tt <- t.test(x = sample(),
-                 mu = input$mu)
-    x <-
-      c("p-hodnota:" = tt$p.value,
-        "95% CI:" = paste0("(", paste0(tt$conf.int, collapse = ", "), ")"),
-        "Výsledek:" = ifelse(tt$p.value < 0.05, "Zamítáme H0", "Nemůžeme zamítnout H0")
-      )
+    result <- capture.output(t.test(x = sample(), mu = input$mu))
 
-    paste(names(x), x, sep = " ", collapse = "\n")
+    paste(result[2:5], collapse = "\n")
   }) |>
     bindEvent(input$generate)
 
   output$sam_tt_sim <- renderText({
-    R <- 2
+    R <- 1000
     pvals1 <- numeric(R)
     pvals2 <- numeric(R)
     mu2 <- input$mu + 1

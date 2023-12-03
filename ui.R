@@ -68,15 +68,7 @@ ui <- page_sidebar(
                verbatimTextOutput("sam_sw")
         ),
         column(width = 6,
-               verbatimTextOutput("sam_char")
-        )
-      ),
-      fluidRow(
-        column(width = 6,
                verbatimTextOutput("sam_tt")
-        ),
-        column(width = 6,
-               verbatimTextOutput("sam_tt_sim")
         )
       )
     ),
