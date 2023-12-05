@@ -5,7 +5,6 @@ library(bslib)
 library(shinyjs)
 # Výpočty
 library(boot)
-library(distr6)
 # Funkce
 generate_data <- function(continuous, normality, outliers,
                           n, mu, sigma = mu, outliers_n) {
