@@ -136,21 +136,13 @@ server <- function(input, output, session) {
     paste(res, collapse = "\n")
   })
 
-  observe({
-    R <- input$R
-    is_in <- numeric(R)
-    # browser()
-    for (i in seq_len(R)) {
-      data <- generate_nonboot(R, current_sample())
-      ci_lower <- mean(data) - qnorm(0.975)*sd(data)
-      ci_upper <- mean(data) + qnorm(0.975)*sd(data)
-      is_in[i] <- ci_lower <= 10 & 10 <= ci_upper
-    }
-  }) |>
-    bindEvent(input$generate)
-
   output$nonboot_char <- renderText({
-    x <- bootstrap_nonparam()[-1]
+    x <- setNames(bootstrap_nonparam()[-1], c(
+      "Odhadnutý průměr",
+      "Směrodatná odchylka",
+      "Bias",
+      "95% CI"
+    ))
     paste(names(x), x, sep = ": ", collapse = "\n")
   })
   # ----------------------------------------------------------------------------
@@ -179,15 +171,18 @@ server <- function(input, output, session) {
     boxplot(bootstrap_param()$theta)
   })
 
-  parboot_sw <-
-    reactive(capture.output(shapiro.test(bootstrap_param()$theta))[-1]) |>
-    bindEvent(current_sample())
   output$parboot_sw <- renderText({
-    paste(parboot_sw(), collapse = "\n")
+    ret <- capture.output(shapiro.test(bootstrap_param()$theta))[-1]
+    paste(ret, collapse = "\n")
   })
 
   output$parboot_char <- renderText({
-    x <- bootstrap_param()[-1]
+    x <- setNames(bootstrap_param()[-1], c(
+      "Odhadnutý průměr",
+      "Směrodatná odchylka",
+      "Bias",
+      "95% CI"
+    ))
     paste(names(x), x, sep = ": ", collapse = "\n")
   })
   # ----------------------------------------------------------------------------

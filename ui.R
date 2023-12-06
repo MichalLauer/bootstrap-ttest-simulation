@@ -13,7 +13,7 @@ ui <- page_sidebar(
                  value = 30, min = 1, max = 1000),
     numericInput(inputId = "R",
                  label = "Bootstrap (R)",
-                 value = 100, min = 1, max = 1000),
+                 value = 1000, min = 1, max = 1000),
     hr(),
     # Spojitost
     checkboxInput(inputId = "continuous",

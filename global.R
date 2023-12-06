@@ -26,7 +26,7 @@ generate_data <- function(continuous, normality, outliers, n) {
     }
   } else {
     # Nespojití data - Poissonovo
-    data <- rpois(n = n, lambda = mu)
+    data <- rbinom(n = n, size = 25, prob = .4)
   }
 
   # Přidání odlehlých hodnot
@@ -57,8 +57,8 @@ data_info <- function(continuous, normality, outliers, n) {
     }
   } else {
     # Nespojití data - Poissonovo
-    distr <- "Poisson"
-    params <- " - λ = 10"
+    distr <- "Binomial"
+    params <- "- n = 25\n - p = 0.4"
   }
 
   # Přidání odlehlých hodnot
