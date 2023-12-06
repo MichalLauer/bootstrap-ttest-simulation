@@ -11,7 +11,7 @@ ui <- page_sidebar(
     numericInput(inputId = "n",
                  label = "Výběr (n)",
                  value = 30, min = 1, max = 1000),
-    numericInput(inputId = "n_boot",
+    numericInput(inputId = "R",
                  label = "Bootstrap (R)",
                  value = 100, min = 1, max = 1000),
     hr(),
@@ -19,36 +19,23 @@ ui <- page_sidebar(
     checkboxInput(inputId = "continuous",
                   label = "Jsou data spojitá?",
                   value = TRUE),
-    hr(),
     # Normalita
     checkboxInput(inputId = "normality",
                   label = "Je splněna normalita?",
                   value = TRUE),
-    fluidRow(
-      column(width = 6,
-             numericInput(inputId = "mu",
-                          label = "μ",
-                          value = 0, min = -Inf, max = Inf)),
-      column(width = 6,
-             numericInput(inputId = "sigma",
-                          label = "σ",
-                          value = 1, min = 1e-16, max = Inf))
-    ),
-    hr(),
     # Odlehlé hodnoty
     checkboxInput(inputId = "outliers",
                   label = "Existují odlehlé hodnoty?",
                   value = FALSE),
-    disabled(numericInput(inputId = "outliers_n",
-                          label = "Kolik jich je?",
-                          value = 1, min = 1, max = 30)),
     hr(),
     actionBttn(
       inputId = "generate",
       label = "Generuj!",
       style = "stretch",
       color = "success"
-    )
+    ),
+    hr(),
+    verbatimTextOutput("generated_data")
   ),
   shinyjs::useShinyjs(),
   tabsetPanel(
@@ -57,37 +44,83 @@ ui <- page_sidebar(
       title = "Náhodný výběr",
       fluidRow(
         column(width = 10,
-               plotOutput("sam_hs")
+               plotOutput("ttest_hs")
         ),
         column(width = 2,
-               plotOutput("sam_bp")
+               plotOutput("ttest_bp")
         )
       ),
       fluidRow(
         column(width = 6,
-               verbatimTextOutput("sam_sw")
+               verbatimTextOutput("ttest_sw")
         ),
         column(width = 6,
-               verbatimTextOutput("sam_tt")
+               verbatimTextOutput("ttest_ttest")
+        )
+      ),
+      fluidRow(
+        column(width = 6,
+               verbatimTextOutput("ttest_simulation")
+        ),
+        column(width = 6,
+               verbatimTextOutput("ttest_chars")
         )
       )
     ),
     # Bootstrapování
     tabPanel(
-      title = "Bootstrap",
+      title = "Neparametrický Bootstrap",
       fluidRow(
-        column(width = 12,
-               plotOutput("boot_hs")
+        column(width = 10,
+               plotOutput("nonboot_hs")
+        ),
+        column(width = 2,
+               plotOutput("nonboot_bp")
         )
       ),
       fluidRow(
         column(width = 6,
-               verbatimTextOutput("boot_sw")
+               verbatimTextOutput("nonboot_sw")
         ),
         column(width = 6,
-               verbatimTextOutput("boot_char")
+               verbatimTextOutput("nonboot_char")
+        )
+      ),
+      fluidRow(
+        column(width = 6,
+               verbatimTextOutput("nonboot_simulation")
         )
       )
+    ),
+    # Bootstrapování
+    tabPanel(
+      title = "Parametrický Bootstrap",
+      fluidRow(
+        column(width = 10,
+               plotOutput("parboot_hs")
+        ),
+        column(width = 2,
+               plotOutput("parboot_bp")
+        )
+      ),
+      fluidRow(
+        column(width = 6,
+               verbatimTextOutput("parboot_sw")
+        ),
+        column(width = 6,
+               verbatimTextOutput("parboot_char")
+        )
+      ),
+      fluidRow(
+        column(width = 6,
+               verbatimTextOutput("parboot_sim")
+        )
+      )
+    ),
+    tabPanel(
+      title = "Porovnání",
+      plotOutput("distributions"),
+      gt_output("comparison")
     )
   )
 )

@@ -1,138 +1,237 @@
 server <- function(input, output, session) {
 
-  ### Ovládání
-  # Změny ovládání vlivem spojitosti
-  # TODO: Změnit minimální hodnotu pro mu kvůli Poissonovu rozdělení
+  # Spojitost
   observe({
+    # Data jsou spojitá
     if (input$continuous) {
       enable("normality")
-      enable("sigma")
-    } else {
+    }
+    # Data nejsou spojitá
+    else {
       disable("normality")
-      disable("sigma")
     }
   }) |>
-    bindEvent(input$continuous, ignoreInit = TRUE)
+    bindEvent(input$continuous, input$outliers)
 
-  # Změny ovládání vlivem velikosti vzorku
-  observe({
-    updateNumericInput(inputId = "outliers_n",
-                       value = min(input$n, input$outliers_n),
-                       max = input$n)
+  output$generated_data <- renderText({
+    text <- data_info(continuous = input$continuous,
+                      normality = input$normality,
+                      outliers = input$outliers,
+                      n = input$n)
+    paste(text, collapse = "\n")
   }) |>
-    bindEvent(input$n)
+    bindEvent(input$generate)
 
-  # Změny ovládání vlivem odlehlých hodnot
-  observe({
-    if (input$outliers) {
-      enable("outliers_n")
-      enable("outliers_sigma")
-    } else {
-      disable("outliers_n")
-      disable("outliers_sigma")
-    }
-  }) |>
-    bindEvent(input$outliers, ignoreInit = TRUE)
   # ----------------------------------------------------------------------------
 
 
   # Generování dat
-  sample <-
+  current_sample <-
     reactive({
       generate_data(continuous = input$continuous,
                     normality = input$normality,
                     outliers = input$outliers,
-                    n = input$n,
-                    mu = input$mu,
-                    sigma = input$sigma,
-                    outliers_n = input$outliers_n)
+                    n = input$n)
     }) |>
     bindEvent(input$generate)
 
   ### Panel 1 - Náhodný výběr
-  output$sam_hs <- renderPlot({
-    hist(sample(),
+  output$ttest_hs <- renderPlot({
+    hist(current_sample(),
          main = "Histogram náhodného výběru",
          xlab = "Náhodný výběr", ylab = "Četnost")
-  })
-
-  output$sam_bp <- renderPlot({
-    boxplot(sample())
-  })
-
-  output$sam_sw <- renderText({
-    result <- capture.output(shapiro.test(sample()))
-
-    paste(result[-1], collapse = "\n")
-  })
-
-  output$sam_tt <- renderText({
-    result <- capture.output(t.test(x = sample(), mu = input$mu))
-
-    paste(result[2:5], collapse = "\n")
   }) |>
+    bindEvent(current_sample())
+
+  output$ttest_bp <- renderPlot({
+    boxplot(current_sample())
+  }) |>
+    bindEvent(current_sample())
+
+  output$ttest_sw <- renderText({
+    res <- capture.output(shapiro.test(current_sample()))[-1]
+    paste(res, collapse = "\n")
+  }) |>
+    bindEvent(current_sample())
+
+  output$ttest_ttest <- renderText({
+    paste(capture.output(t.test(x = current_sample(), mu = 10))[2:5], collapse = "\n")
+  }) |>
+    bindEvent(current_sample())
+
+  ttest_simulation <-
+    reactive({
+      R <- input$R
+      pvals1 <- numeric(R)
+      pvals2 <- numeric(R)
+      for (i in seq_len(R)) {
+        data <- generate_data(continuous = input$continuous,
+                              normality = input$normality,
+                              outliers = input$outliers,
+                              n = input$n)
+        pvals1[i] <- t.test(x = data, mu = 10)$p.value
+        pvals2[i] <- t.test(x = data, mu = 11)$p.value
+      }
+      list(pvals1 = pvals1,
+           pvals2 = pvals2,
+           type_I = mean(pvals1 <= 0.05),
+           type_II = mean(pvals2 >= 0.05),
+           power = 1 - mean(pvals2 >= 0.05)
+      )
+    }) |>
     bindEvent(input$generate)
 
-  output$sam_tt_sim <- renderText({
-    R <- 1000
-    pvals1 <- numeric(R)
-    pvals2 <- numeric(R)
-    mu2 <- input$mu + 1
-    for (i in seq_len(R)) {
-      data <- generate_data(continuous = input$continuous,
-                            normality = input$normality,
-                            outliers = input$outliers,
-                            n = input$n,
-                            mu = input$mu,
-                            sigma = input$sigma,
-                            outliers_n = input$outliers_n)
-      pvals1[i] <- t.test(x = data, mu = input$mu)$p.value
-      pvals2[i] <- t.test(x = data, mu = mu2)$p.value
-    }
-
+  output$ttest_simulation <- renderText({
+    sims <- ttest_simulation()
     x <-
-      c("Počet simulací:" = R,
-        "Chyba I. druhu:" = mean(pvals1 <= 0.05),
-        mean(pvals2 >= 0.05),
-        "Síla testu:" = 1 - mean(pvals2 >= 0.05)
+      c("Počet simulací:" = input$R,
+        "Chyba I. druhu:" = sims$type_I,
+        "Chyba II. druhu (μ = 11):" = sims$type_II,
+        "Síla testu:" = sims$power
       )
-    names(x)[3] <- paste0("Chyba II. druhu (μ = ", mu2, ")")
 
     paste(names(x), x, sep = " ", collapse = "\n")
   }) |>
     bindEvent(input$generate)
+
+
+  output$ttest_chars <- renderText({
+    data <- current_sample()
+    x <-
+      c("Odhadnutý průměr:" = mean(data),
+        "Rozptyl průměru:" = var(data) / length(data),
+        "Směr. Odchyl. průměru:" = sd(data) / sqrt(length(data)))
+
+    paste(names(x), x, sep = " ", collapse = "\n")
+  }) |>
+    bindEvent(current_sample())
   # ----------------------------------------------------------------------------
 
-  bootstrap <- reactive({
-    boot(data = sample(),
-         statistic = function(data, i) mean(data[i]),
-         R = input$n_boot)
-  }) |>
-    bindEvent(sample())
+  bootstrap_nonparam <- reactive({
+    data <- current_sample()
+    theta <- generate_nonboot(input$R, data)
 
-  ### Panel 2 - Bootstrap
-  output$boot_hs <- renderPlot({
-    # boot <-
-    hist(bootstrap()$t,
+    list(theta = theta,
+         theta_boot = mean(theta),
+         boot_se = sd(theta),
+         bias = mean(theta) - mean(data),
+         CI = c(mean(theta) - qnorm(0.975)*sd(theta),
+                mean(theta) + qnorm(0.975)*sd(theta)))
+  }) |>
+    bindEvent(input$generate)
+
+  ### Panel 2 - Neparametrický bootstrap
+  output$nonboot_hs <- renderPlot({
+    hist(bootstrap_nonparam()$theta,
          main = "Histogram bootstrapovaných průměrů",
          xlab = "Průměry", ylab = "Četnost")
   })
 
-  output$boot_sw <- renderText({
-    result <- capture.output(shapiro.test(bootstrap()$t))
-
-    paste(result[-1], collapse = "\n")
+  output$nonboot_bp <- renderPlot({
+    boxplot(bootstrap_nonparam()$theta)
   })
 
-  output$boot_char <- renderText({
-    data <- bootstrap()$t
-    x <-
-      c("Průměr:" = mean(data),
-        "Rozptyl:" = var(data)
-      )
+  output$nonboot_sw <- renderText({
+    res <- capture.output(shapiro.test(bootstrap_nonparam()$theta))[-1]
+    paste(res, collapse = "\n")
+  })
 
-    paste(names(x), x, sep = " ", collapse = "\n")
+  observe({
+    R <- input$R
+    is_in <- numeric(R)
+    # browser()
+    for (i in seq_len(R)) {
+      data <- generate_nonboot(R, current_sample())
+      ci_lower <- mean(data) - qnorm(0.975)*sd(data)
+      ci_upper <- mean(data) + qnorm(0.975)*sd(data)
+      is_in[i] <- ci_lower <= 10 & 10 <= ci_upper
+    }
+  }) |>
+    bindEvent(input$generate)
+
+  output$nonboot_char <- renderText({
+    x <- bootstrap_nonparam()[-1]
+    paste(names(x), x, sep = ": ", collapse = "\n")
   })
   # ----------------------------------------------------------------------------
+
+  bootstrap_param <- reactive({
+    data <- current_sample()
+    theta <- generate_parboot(input$R, data)
+
+    list(theta = theta,
+         theta_boot = mean(theta),
+         boot_se = sd(theta),
+         bias = mean(theta) - mean(data),
+         CI = c(mean(theta) - qnorm(0.975)*sd(theta),
+                mean(theta) + qnorm(0.975)*sd(theta)))
+  }) |>
+    bindEvent(input$generate)
+
+  ### Panel 3 - Parametrický bootstrap
+  output$parboot_hs <- renderPlot({
+    hist(bootstrap_param()$theta,
+         main = "Histogram bootstrapovaných průměrů",
+         xlab = "Průměry", ylab = "Četnost")
+  })
+
+  output$parboot_bp <- renderPlot({
+    boxplot(bootstrap_param()$theta)
+  })
+
+  parboot_sw <-
+    reactive(capture.output(shapiro.test(bootstrap_param()$theta))[-1]) |>
+    bindEvent(current_sample())
+  output$parboot_sw <- renderText({
+    paste(parboot_sw(), collapse = "\n")
+  })
+
+  output$parboot_char <- renderText({
+    x <- bootstrap_param()[-1]
+    paste(names(x), x, sep = ": ", collapse = "\n")
+  })
+  # ----------------------------------------------------------------------------
+
+
+
+  ### Panel 4 - Porovnání
+  output$distributions <- renderPlot({
+    data <- current_sample()
+    theta <- bootstrap_nonparam()$theta
+    theta2 <- bootstrap_param()$theta
+
+    df <- tibble(
+      Metoda = c(rep("Náhodný výběr", length(data)),
+                 rep("Neparametrický bootstrap", length(theta)),
+                 rep("Parametrický bootstrap", length(theta2))),
+      Data = c(data, theta, theta2))
+
+    # browser()
+    limit <- max(abs(max(df$Data) - mean(df$Data)), abs(min(df$Data) - mean(df$Data))) + 1
+    limit <- ceiling(c(mean(data) - limit, mean(data) + limit))
+
+    df |>
+      ggplot(aes(x = Data, fill = Metoda)) +
+      geom_density(alpha = 0.5) +
+      geom_vline(xintercept = 10, linetype = "dashed") +
+      scale_x_continuous(limits = limit) +
+      theme_minimal() +
+      theme(legend.position = "top")
+  })
+
+  output$comparison <- render_gt({
+    s <- current_sample()
+    nb <- bootstrap_nonparam()
+    pb <- bootstrap_param()
+
+    tribble(
+      ~"Statistika",  ~"Náhodný výběr",     ~"Neparametrický bootstrap", ~"Parametrický bootstrap",
+      "Odhad",        mean(s),               nb$theta_boot,              pb$theta_boot,
+      "Rozptyl",      var(s)/length(s),      nb$boot_se^2,               pb$boot_se^2,
+      "Směr. odch.",  sd(s)/sqrt(length(s)), nb$boot_se,                 pb$boot_se,
+    ) |>
+      gt()
+
+  })
 
 }
